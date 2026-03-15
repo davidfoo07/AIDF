@@ -1,4 +1,5 @@
 from core.universe import PortfolioUniverse
+from data.data_loader import download_market_data
 
 
 def main():
@@ -14,6 +15,13 @@ def main():
     print("Name:", p.name)
     print("Weights:", p.resolved_portfolio_weights)
     print("Weight sum:", sum(p.resolved_portfolio_weights.values()))
+
+    #Test your data loader
+    prices, volumes = download_market_data(universe)
+    print("\nPrices shape:", prices.shape)
+    print("Volumes shape:", volumes.shape)
+    print("\nFirst 5 rows of prices:")
+    print(prices.head())
 
 
 if __name__ == "__main__":
