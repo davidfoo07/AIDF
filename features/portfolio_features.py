@@ -25,9 +25,17 @@ def compute_portfolio_features(
 
         for feature_name, df in stock_features.items():
             weighted = sum(df[ticker] * weight for ticker, weight in weights.items())
-            row[feature_name] = weighted
+            row[feature_name] = weighted.values
 
         portfolio_features.append(row)
 
-        res = pd.concat(portfolio_features).reset_index(drop=True)
-        return res.dropna()
+    res = pd.concat(portfolio_features).reset_index(drop=True)
+    res = res.dropna()
+
+    # Only keep dates where ALL portfolios have data
+    num_portfolios = len(portfolios)
+    date_counts = res.groupby("date")["portfolio_id"].count()
+    valid_dates = date_counts[date_counts == num_portfolios].index
+    res = res[res["date"].isin(valid_dates)]
+
+    return res.reset_index(drop=True)
