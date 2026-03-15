@@ -1,6 +1,13 @@
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from sklearn.preprocessing import StandardScaler
+
+FEATURE_COLS = [
+    "momentum_20", "momentum_60",
+    "volatility_20", "volatility_60",
+    "avg_volume_20",
+]
 
 
 def prepare_data(portfolio_features: pd.DataFrame, forward_sharpe: pd.DataFrame):
@@ -24,15 +31,15 @@ def prepare_data(portfolio_features: pd.DataFrame, forward_sharpe: pd.DataFrame)
     test_dates = merged["date"] >= "2024-01-01"
     
     # Extract X (the 5 feature columns) and y (forward_sharpe) for train and test
-    feature_columns = [
-        "momentum_20", "momentum_60",
-        "volatility_20", "volatility_60",
-        "avg_volume_20",
-    ]
-    X_train = merged.loc[train_dates, feature_columns]
+    X_train = merged.loc[train_dates, FEATURE_COLS].copy()
     y_train = merged.loc[train_dates, "forward_sharpe"]
-    X_test = merged.loc[test_dates, feature_columns]
+    X_test = merged.loc[test_dates, FEATURE_COLS].copy()
     y_test = merged.loc[test_dates, "forward_sharpe"]
+
+    # Scale the features
+    scaler = StandardScaler()
+    X_train[FEATURE_COLS] = scaler.fit_transform(X_train[FEATURE_COLS])
+    X_test[FEATURE_COLS] = scaler.transform(X_test[FEATURE_COLS])
    
     # Build group arrays — count portfolios per date
     group_train = merged.loc[train_dates].groupby("date").size().values
@@ -58,8 +65,12 @@ def train_ranking_model(X_train, y_train, group_train):
     params = {
         "objective": "rank:pairwise",
         "eval_metric": "ndcg",
-        "learning_rate": 0.1,
-        "max_depth": 4,
+        "learning_rate": 0.05,    
+        "max_depth": 3,           
+        "min_child_weight": 5,    
+        "subsample": 0.8,         
+        "colsample_bytree": 0.8,  
+        "seed": 42,
     }
 
     # Train model

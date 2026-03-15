@@ -5,6 +5,7 @@ from features.stock_features import compute_stock_features
 from features.portfolio_features import compute_portfolio_features
 from targets.sharpe_target import compute_forward_sharpe
 from models.ranking_model import prepare_data, train_ranking_model, predict_scores
+from models.evaluation import evaluate_ranking
 from conviction.conviction_scores import (
     softmax_conviction,
     minmax_conviction,
@@ -15,83 +16,40 @@ from conviction.conviction_scores import (
 
 
 def main():
-    # Step 1: Load portfolios
-    print("=" * 60)
-    print("STEP 1: Loading portfolios...")
-    print("=" * 60)
+    # load portfolios from JSON
     universe = PortfolioUniverse.make_many("sample_portfolios.json")
     universe.resolve_portfolios_inplace()
-    print(f"Number of portfolios: {len(universe.portfolios)}")
-    print(f"Tickers: {universe.all_tickers()}")
-    print(f"Example weights (portfolio 1): {universe.portfolios[0].resolved_portfolio_weights}")
+    print(f"Loaded {len(universe.portfolios)} portfolios with {len(universe.all_tickers())} unique tickers")
 
-    # Step 2: Download market data
-    print("\n" + "=" * 60)
-    print("STEP 2: Downloading market data...")
-    print("=" * 60)
+    # download price and volume data
     prices, volumes = download_market_data(universe)
-    print(f"Prices shape: {prices.shape}")
-    print(f"Date range: {prices.index[0]} to {prices.index[-1]}")
-    print(f"Prices head:\n{prices.head()}")
+    print(f"Downloaded data: {prices.shape[0]} days, {prices.shape[1]} tickers")
 
-    # Step 3: Compute stock features
-    print("\n" + "=" * 60)
-    print("STEP 3: Computing stock features...")
-    print("=" * 60)
+    # compute stock-level features then aggregate to portfolio level
     stock_features = compute_stock_features(prices, volumes)
-    for name, df in stock_features.items():
-        print(f"  {name}: shape={df.shape}")
-    print(f"\nMomentum 20 sample:\n{stock_features['momentum_20'].dropna().head()}")
-
-    # Step 4: Aggregate to portfolio features
-    print("\n" + "=" * 60)
-    print("STEP 4: Aggregating to portfolio features...")
-    print("=" * 60)
     portfolio_features = compute_portfolio_features(stock_features, universe.portfolios)
-    print(f"Portfolio features shape: {portfolio_features.shape}")
-    print(f"Columns: {list(portfolio_features.columns)}")
-    print(f"Head:\n{portfolio_features.head(10)}")
+    print(f"Portfolio features: {portfolio_features.shape}")
 
-    # Step 5: Compute forward Sharpe (target)
-    print("\n" + "=" * 60)
-    print("STEP 5: Computing forward Sharpe ratio...")
-    print("=" * 60)
+    # compute forward 20-day sharpe ratio as ranking target
     forward_sharpe = compute_forward_sharpe(prices, universe.portfolios)
-    print(f"Forward Sharpe shape: {forward_sharpe.shape}")
-    print(f"Head:\n{forward_sharpe.dropna().head(10)}")
 
-    # Step 6: Prepare data and train model
-    print("\n" + "=" * 60)
-    print("STEP 6: Preparing data and training XGBoost ranking model...")
-    print("=" * 60)
+    # split data, train xgboost ranking model
     X_train, y_train, group_train, X_test, y_test, group_test, test_df = prepare_data(portfolio_features, forward_sharpe)
-    print(f"X_train shape: {X_train.shape}")
-    print(f"X_test shape: {X_test.shape}")
-    print(f"Group sizes (first 5): {group_train[:5]}")
-    print(f"Number of training dates: {len(group_train)}")
-    print(f"Number of test dates: {len(group_test)}")
+    print(f"Train: {X_train.shape[0]} rows ({len(group_train)} dates), Test: {X_test.shape[0]} rows ({len(group_test)} dates)")
 
-    print("\nTraining model...")
     model = train_ranking_model(X_train, y_train, group_train)
-    print("Model training complete!")
 
-    # Step 7: Predict scores
-    print("\n" + "=" * 60)
-    print("STEP 7: Predicting scores...")
-    print("=" * 60)
+    # predict ranking scores on test set
     scores = predict_scores(model, X_test)
     test_df = test_df.copy()
     test_df["predicted_score"] = scores
-    print(f"Scores shape: {scores.shape}")
-    print(f"Score range: {scores.min():.4f} to {scores.max():.4f}")
-    print(f"First 10 scores: {scores[:10]}")
+    print(f"Score range: [{scores.min():.4f}, {scores.max():.4f}]")
 
-    # Step 8: Apply conviction methods per date
-    print("\n" + "=" * 60)
-    print("STEP 8: Computing conviction scores...")
-    print("=" * 60)
+    # evaluate ranking quality
+    eval_df = evaluate_ranking(test_df)
+
+    # apply conviction score methods per date
     all_convictions = []
-
     for date, group in test_df.groupby("date"):
         group_scores = group["predicted_score"].values
 
@@ -106,30 +64,13 @@ def main():
         all_convictions.append(row)
 
     conviction_df = pd.concat(all_convictions).reset_index(drop=True)
-    print(f"Conviction DataFrame shape: {conviction_df.shape}")
-    print(f"Columns: {list(conviction_df.columns)}")
 
-    # Step 9: Print sample results
-    print("\n" + "=" * 60)
-    print("STEP 9: Sample Results")
-    print("=" * 60)
+    # show results for first test date
     sample_date = conviction_df["date"].iloc[0]
     sample = conviction_df[conviction_df["date"] == sample_date]
 
-    print(f"\nDate: {sample_date}")
-    print("-" * 50)
-    for _, row in sample.iterrows():
-        print(f"\n  {row['portfolio_id']}:")
-        print(f"    Predicted Score:{row['predicted_score']:.4f}")
-        print(f"    Softmax Conviction:{row['softmax']:.4f}")
-        print(f"    MinMax Conviction:    {row['minmax']:.4f}")
-        print(f"    Z-Score Conviction:   {row['zscore']:.4f}")
-        print(f"    Rank Conviction:      {row['rank']:.4f}")
-        print(f"    Signal/Noise:         {row['signal_to_noise']:.4f}")
-
-    print("\n" + "=" * 60)
-    print("PIPELINE COMPLETE!")
-    print("=" * 60)
+    print(f"\nConviction scores for {sample_date.date()}:")
+    print(sample[["portfolio_id", "predicted_score", "softmax", "minmax", "zscore", "rank", "signal_to_noise"]].to_string(index=False))
 
 
 if __name__ == "__main__":
