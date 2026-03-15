@@ -29,4 +29,5 @@ def compute_portfolio_features(
 
         portfolio_features.append(row)
 
-    return pd.concat(portfolio_features).reset_index(drop=True)
+        res = pd.concat(portfolio_features).reset_index(drop=True)
+        return res.dropna()
