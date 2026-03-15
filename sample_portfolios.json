@@ -1,0 +1,92 @@
+[
+  {
+    "portfolio_id": "portfolio_001",
+    "portfolio_name": "US Mega Cap Growth",
+    "description": "Large-cap technology and internet basket.",
+    "portfolio_spec": {
+      "name": "mega_cap_growth",
+      "raw_weights": {
+        "AAPL": 0.22,
+        "MSFT": 0.22,
+        "NVDA": 0.20,
+        "AMZN": 0.18,
+        "GOOGL": 0.18
+      }
+    },
+    "metadata": {
+      "theme": "growth"
+    }
+  },
+  {
+    "portfolio_id": "portfolio_002",
+    "portfolio_name": "Semiconductor Leaders",
+    "description": "Semiconductor-heavy basket.",
+    "portfolio_spec": {
+      "name": "semiconductor_leaders",
+      "raw_weights": {
+        "NVDA": 0.24,
+        "AMD": 0.20,
+        "TSM": 0.20,
+        "AVGO": 0.18,
+        "QCOM": 0.18
+      }
+    },
+    "metadata": {
+      "theme": "semis"
+    }
+  },
+  {
+    "portfolio_id": "portfolio_003",
+    "portfolio_name": "Cloud Platforms",
+    "description": "Large cloud and platform companies.",
+    "portfolio_spec": {
+      "name": "cloud_platforms",
+      "raw_weights": {
+        "MSFT": 0.24,
+        "AMZN": 0.22,
+        "GOOGL": 0.18,
+        "META": 0.18,
+        "ORCL": 0.18
+      }
+    },
+    "metadata": {
+      "theme": "cloud"
+    }
+  },
+  {
+    "portfolio_id": "portfolio_004",
+    "portfolio_name": "Consumer Tech Mix",
+    "description": "Consumer-facing technology and media companies.",
+    "portfolio_spec": {
+      "name": "consumer_tech_mix",
+      "raw_weights": {
+        "AAPL": 0.22,
+        "AMZN": 0.22,
+        "TSLA": 0.20,
+        "NFLX": 0.18,
+        "META": 0.18
+      }
+    },
+    "metadata": {
+      "theme": "consumer_tech"
+    }
+  },
+  {
+    "portfolio_id": "portfolio_005",
+    "portfolio_name": "Enterprise Software",
+    "description": "Enterprise software and SaaS companies.",
+    "portfolio_spec": {
+      "name": "enterprise_software",
+      "raw_weights": {
+        "MSFT": 0.24,
+        "ADBE": 0.20,
+        "CRM": 0.20,
+        "INTU": 0.18,
+        "NOW": 0.18
+      }
+    },
+    "metadata": {
+      "theme": "software"
+    }
+  }
+]
